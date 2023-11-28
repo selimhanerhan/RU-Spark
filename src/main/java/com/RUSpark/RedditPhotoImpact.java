@@ -1,6 +1,5 @@
 package com.RUSpark;
 
-import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.types.*;
 import static org.apache.spark.sql.functions.*;
@@ -24,7 +23,6 @@ public class RedditPhotoImpact {
 		String InputPath = args[0];
     // 1
 		SparkSession spark = SparkSession.builder().appName("Reddit").getOrCreate();
-		Dataset<Row> redditData = spark.read().option("header",true).csv("../../../../../../RedditData/RedditData-Small.csv");
     
     // 2
     StructType schema = new StructType().add("image_id", DataTypes.LongType, true)
@@ -34,6 +32,8 @@ public class RedditPhotoImpact {
     .add("upvotes", DataTypes.IntegerType, true)
     .add("downvotes", DataTypes.IntegerType, true)
     .add("comments", DataTypes.IntegerType, true);
+    
+    Dataset<Row> redditData = spark.read().schema(schema).csv(InputPath);
 
     // 3
     spark.udf().register("calculateImpact", (Integer upvotes, Integer downvotes, Integer comments) -> upvotes + downvotes + comments, DataTypes.IntegerType);
@@ -42,7 +42,8 @@ public class RedditPhotoImpact {
     Dataset<Row> imageImpact = redditData.groupBy("image_id").agg(sum("impact").alias("total_impact"));
 
     // 4
-    imageImpact.write().csv("/src/main/java/com/RUSpark");
+    //imageImpact.write().csv("/src/main/java/com/RUSpark");
+    imageImpact.show();
     
 
 
