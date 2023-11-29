@@ -13,6 +13,12 @@ import scala.Tuple2;
 
 /* any necessary Java packages here */
 
+/**
+1- Read ratings data into RDD
+2- Calculate similarities with other users
+3- Recommend movies for the user
+4- Print recommendations
+ */
 public class NetflixCollabFilter {
 
   private static final int K = 11;
@@ -34,7 +40,7 @@ public class NetflixCollabFilter {
 
     JavaSparkContext sc = new JavaSparkContext("local", "CollaborativeFiltering");
 
-    // Read ratings data into RDD
+    // 1
     JavaRDD<String> ratingsData = sc.textFile(InputPath);
     JavaPairRDD<Integer, List<Double>> userRatings = ratingsData.mapToPair(line -> {
       String[] parts = line.split(",");
@@ -43,27 +49,27 @@ public class NetflixCollabFilter {
       double rating = Double.parseDouble(parts[2]);
   
       return new Tuple2<>(userId2, new Tuple2<>(movieId, rating));
-  })
-  .groupByKey()
-  .mapValues(iterable -> {
-      List<Double> ratingsList = new ArrayList<>(Collections.nCopies(1000, 0.0));
-      for (Tuple2<Integer, Double> tuple : iterable) {
-          ratingsList.set(tuple._1(), tuple._2());
-      }
-      return ratingsList;
-  });
+    })
+    .groupByKey()
+    .mapValues(iterable -> {
+        List<Double> ratingsList = new ArrayList<>(Collections.nCopies(1000, 0.0));
+        for (Tuple2<Integer, Double> tuple : iterable) {
+            ratingsList.set(tuple._1(), tuple._2());
+        }
+        return ratingsList;
+    });
   
-    // Calculate similarities with other users
+    // 2
     List<Tuple2<Integer, Double>> userSimilarities = userRatings
             .filter(tuple -> tuple._1() != userId)
             .mapToPair(tuple -> new Tuple2<>(tuple._1(), calculateSimilarity(userRatings.lookup(userId).get(0), tuple._2())))
             .sortByKey(false)
-            .take(10); // Choose top 10 most similar users
+            .take(K); // Choose top 10 most similar users
 
-    // Recommend movies for the user
+    // 3
     List<Tuple2<Integer, Double>> recommendations = recommendMovies(userId, userSimilarities, userRatings, numRecommendations);
 
-    // Print recommendations
+    // 4
     System.out.println("Top " + numRecommendations + " movie recommendations for user " + userId + ":");
     for (Tuple2<Integer, Double> recommendation : recommendations) {
         System.out.println("Movie ID: " + recommendation._1() + ", Predicted Rating: " + recommendation._2());
