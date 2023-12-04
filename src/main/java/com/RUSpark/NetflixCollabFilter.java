@@ -55,6 +55,7 @@ public class NetflixCollabFilter {
     int targetUserId = userId;
 
     // Calculate user similarities
+    
     JavaPairRDD<Integer, Double> userSimilarities = calculateUserSimilarities(ratingsData, targetUserId);
 
     // Make recommendations
@@ -87,15 +88,16 @@ public class NetflixCollabFilter {
         int targetUserId) {
     // Your code to calculate user similarities
     // Example:
+    List<Double> targetUserRatings = getRatings(targetUserId, ratingsData).stream().map(Tuple2::_2).collect(Collectors.toList());
+
     return ratingsData
             .filter(tuple -> tuple._1() != targetUserId)
             .mapToPair(tuple -> {
                 int otherUserId = tuple._1();
-                List<Double> targetUserRatings = getRatings(targetUserId, ratingsData).stream().map(Tuple2::_2).collect(Collectors.toList());
                 List<Double> otherUserRatings = getRatings(otherUserId, ratingsData).stream().map(Tuple2::_2).collect(Collectors.toList());
 
                 double similarity = calculateSimilarity(targetUserRatings, otherUserRatings);
-                
+
                 return new Tuple2<>(otherUserId, similarity);
             })
             .sortByKey(false);
@@ -103,14 +105,17 @@ public class NetflixCollabFilter {
 
   
 
-  private static List<Tuple2<Double, Double>> getRatings(int userId, JavaPairRDD<Integer, Tuple2<Integer, Double>> ratingsData) {
+    private static List<Tuple2<Double, Double>> getRatings(int userId, JavaPairRDD<Integer, Tuple2<Integer, Double>> ratingsData) {
       // Your code to get ratings for a user
       // Example:
-      return ratingsData
+      List<Tuple2<Double, Double>> ratingsList = ratingsData
               .filter(tuple -> tuple._1() == userId)
               .map(tuple -> new Tuple2<>(Double.valueOf(tuple._2()._1()), tuple._2()._2()))
-              .collect();
-  }
+              .take(Integer.MAX_VALUE); // Use take() instead of collect()
+
+      return ratingsList.stream().collect(Collectors.toList());
+    }
+
     private static double calculateSimilarity(List<Double> x, List<Double> y) {
       // Calculate the mean of the vectors x and y.
       double xMean = x.stream().mapToDouble(Double::doubleValue).sum() / x.size();
